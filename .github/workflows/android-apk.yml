@@ -14,14 +14,14 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -31,57 +31,62 @@ jobs:
         with:
           packages: 'platform-tools'
 
-      - name: Extract and inspect project
+      - name: Extract project
         run: |
           set -e
           test -f project.zip
           mkdir -p source
 
-          echo "=== ZIP CONTENTS ==="
+          echo "=== PROJECT FILES ==="
           unzip -Z1 project.zip | head -200
 
           unzip -q project.zip -d source
 
-          WRAPPER=$(find source -type f -name gradlew -print -quit)
+          ROOT=$(find source -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit | xargs -r dirname)
 
-          if [ -n "$WRAPPER" ]; then
-            echo "PROJECT_DIR=$(dirname "$WRAPPER")" >> "$GITHUB_ENV"
-            echo "BUILD_MODE=wrapper" >> "$GITHUB_ENV"
-          else
-            ROOT=$(find source -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit | xargs -r dirname)
-
-            if [ -z "$ROOT" ]; then
-              echo "::error::Gradle project not found"
-              exit 1
-            fi
-
-            echo "PROJECT_DIR=$ROOT" >> "$GITHUB_ENV"
-            echo "BUILD_MODE=system" >> "$GITHUB_ENV"
+          if [ -z "$ROOT" ]; then
+            echo "::error::Gradle project not found"
+            exit 1
           fi
 
+          echo "PROJECT_DIR=$ROOT" >> "$GITHUB_ENV"
+
+          echo "=== PROJECT ROOT ==="
+          ls -la "$ROOT"
+
       - name: Setup Gradle
-        if: env.BUILD_MODE == 'system'
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
         with:
-          gradle-version: '8.9'
+          gradle-version: '9.3.1'
 
       - name: Build APK
         run: |
           set -e
           cd "$PROJECT_DIR"
 
-          if [ "$BUILD_MODE" = "wrapper" ]; then
-            chmod +x gradlew
-            ./gradlew --no-daemon assembleDebug
-          else
-            gradle --no-daemon assembleDebug
+          echo "=== BUILDING YAHYA AI ==="
+          gradle --no-daemon assembleDebug --stacktrace
+
+      - name: Find APK
+        run: |
+          set -e
+
+          echo "=== SEARCHING FOR APK ==="
+          find source -type f -name '*.apk'
+
+          APK=$(find source -type f -path '*/build/outputs/apk/debug/*.apk' -print -quit)
+
+          if [ -z "$APK" ]; then
+            echo "::error::APK file not found"
+            exit 1
           fi
+
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
 
       - name: Export APK
         uses: actions/upload-artifact@v4
         with:
           name: Yahya-AI-APK
-          path: source/**/build/outputs/apk/debug/*.apk
+          path: ${{ env.APK_PATH }}
           if-no-files-found: error
           retention-days: 14
-          
