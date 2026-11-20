@@ -27,15 +27,19 @@ jobs:
           java-version: '17'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
 
       - name: Extract and inspect project
         run: |
           set -e
           test -f project.zip
           mkdir -p source
+
           echo "=== ZIP CONTENTS ==="
           unzip -Z1 project.zip | head -200
+
           unzip -q project.zip -d source
 
           WRAPPER=$(find source -type f -name gradlew -print -quit)
@@ -45,10 +49,12 @@ jobs:
             echo "BUILD_MODE=wrapper" >> "$GITHUB_ENV"
           else
             ROOT=$(find source -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit | xargs -r dirname)
+
             if [ -z "$ROOT" ]; then
               echo "::error::Gradle project not found"
               exit 1
             fi
+
             echo "PROJECT_DIR=$ROOT" >> "$GITHUB_ENV"
             echo "BUILD_MODE=system" >> "$GITHUB_ENV"
           fi
@@ -63,6 +69,7 @@ jobs:
         run: |
           set -e
           cd "$PROJECT_DIR"
+
           if [ "$BUILD_MODE" = "wrapper" ]; then
             chmod +x gradlew
             ./gradlew --no-daemon assembleDebug
@@ -77,3 +84,4 @@ jobs:
           path: source/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
+          
