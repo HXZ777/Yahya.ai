@@ -1,0 +1,6 @@
+{
+  "name": "HXZ AI",
+  "description": "Standalone Arabic RTL AI voice assistant powered by Gemini API and local Android device control.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
