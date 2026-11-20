@@ -54,6 +54,24 @@ jobs:
           echo "=== PROJECT ROOT ==="
           ls -la "$ROOT"
 
+      - name: Generate Debug Keystore
+        run: |
+          set -e
+
+          keytool -genkeypair -v \
+            -keystore "$PROJECT_DIR/debug.keystore" \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US" \
+            -noprompt
+
+          echo "=== KEYSTORE CREATED ==="
+          ls -l "$PROJECT_DIR/debug.keystore"
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
         with:
